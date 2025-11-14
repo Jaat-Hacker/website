@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Core // Hyper-Realistic 3D</title>
+    <!-- Three.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+
+    <style>
+        /* Global Reset and Dark Theme */
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #000008; /* Extremely dark blue/black */
+            color: #E0FFFF; /* Bright cyan/white for text */
+            cursor: crosshair;
+        }
+
+        /* Full-screen Canvas for Three.js (Fixed to viewport) */
+        #scene-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* UI Overlay for Text and Navigation */
+        #ui-overlay {
+            position: fixed; 
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        
+        /* SCROLLABLE CONTENT BLOCK: Forces page scroll for camera movement */
+        #scroll-content {
+            width: 100%;
+            pointer-events: none;
+            height: 500vh; 
+        }
+
+        /* Restoring Glow Animation */
+        @keyframes glow-pulse {
+            0% { box-shadow: 0 0 8px rgba(0, 255, 255, 0.2); }
+            100% { box-shadow: 0 0 12px rgba(0, 255, 255, 0.3); }
+        }
+        
+        /* Holographic Navigation Style (Restoring Glow) */
+        .holographic-panel {
+            pointer-events: auto;
+            background: rgba(0, 191, 255, 0.08); /* Restored higher opacity */
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(0, 255, 255, 0.3); /* Restored brighter border */
+            border-radius: 10px; 
+            padding: 1rem 2rem; 
+            margin: 0.75rem; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); /* Restored box-shadow */
+            text-align: center;
+            text-shadow: 0 0 3px #c2faff; /* Restored text-shadow */
+            animation: glow-pulse 4s infinite alternate ease-in-out; /* Restored animation */
+        }
+
+        .holographic-panel:hover {
+            background: rgba(0, 191, 255, 0.15);
+            border-color: #00FFFF;
+            box-shadow: 0 0 15px #00FFFF, inset 0 0 5px #00FFFF; /* Restored hover glow */
+            transform: scale(1.05); /* Restored scale change */
+            cursor: pointer;
+        }
+
+        .holographic-panel a {
+            color: #E0FFFF;
+            text-decoration: none;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            display: block;
+        }
+
+        /* Title and Subtitle (Restored Shadows) */
+        #main-title {
+            pointer-events: none;
+            text-align: center;
+            margin-top: 5vh;
+            font-size: clamp(2.5rem, 6vw, 5rem);
+            font-weight: 900;
+            color: #00FFFF;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 191, 255, 0.6), 0 0 30px rgba(0, 191, 255, 0.4); /* Restored text-shadow */
+            letter-spacing: 7px;
+        }
+
+        #subtitle {
+             pointer-events: none;
+             font-size: clamp(0.9rem, 1.8vw, 1.4rem);
+             color: #00bfff;
+             opacity: 0.7;
+             letter-spacing: 3px;
+        }
+
+        /* Footer Info */
+        #footer-info {
+            font-size: 0.75rem;
+            opacity: 0.5;
+            letter-spacing: 1px;
+            margin-bottom: 2vh;
+        }
+
+        /* Responsive Navigation Layout */
+        #navigation-row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Scene Container (Fixed Background) -->
+    <div id="scene-container"></div>
+
+    <!-- UI Overlay for Text and Navigation (Fixed Foreground) -->
+    <div id="ui-overlay">
+        <div>
+            <h1 id="main-title">A E T H E R . C O R E</h1>
+            <p id="subtitle">Decentralized Data Repository // Status: Scroll to Engage</p>
+        </div>
+
+        <div id="navigation-row">
+            <div class="holographic-panel"><a href="#">SYSTEM MAP</a></div>
+            <div class="holographic-panel"><a href="#">ACCESS LOGS</a></div>
+            <div class="holographic-panel"><a href="#">ARCHITECTURE</a></div>
+            <div class="holographic-panel"><a href="#">DIAGNOSTICS</a></div>
+        </div>
+        
+        <p id="footer-info">Mouse movement controls parallax depth simulation. Scroll down to enter the core.</p>
+    </div>
+
+    <!-- This content forces the body to scroll and provides the movement trigger -->
+    <div id="scroll-content"></div>
+
+
+<script>
+    // Global variables
+    let scene, camera, renderer, particles;
+    let clock = new THREE.Clock();
+    let mouseX = 0, mouseY = 0;
+    let scrollY = 0; 
+    const windowHalfX = window.innerWidth / 2;
+    const windowHalfY = window.innerHeight / 2;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; 
+
+    // Advanced Realism Variables
+    let cubeCamera, renderTarget, metalMaterial;
+    let particleCount = 10000;
+    let composer; // Effect Composer
+
+    let centralCore; 
+
+    // Floor Wave Effect variables
+    let floor; 
+    let floorOriginalZPositions; 
+
+    // --- Utility Functions ---
+
+    function init() {
+        // Scene Setup
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000005, 0.0035); 
+
+        // Camera Setup
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 60); 
+
+        // Renderer Setup
+        renderer = new THREE.WebGLRenderer({ antialias: false }); 
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(scene.fog.color);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.4; // Restored high exposure
+        
+        document.getElementById('scene-container').appendChild(renderer.domElement);
+
+        // --- Post-Processing Setup ---
+        composer = new THREE.EffectComposer(renderer);
+        composer.addPass(new THREE.RenderPass(scene, camera));
+
+        // Bloom Pass (Restored high strength for glow)
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            0.5, // Restored high strength
+            0.0, 
+            0.3
+        );
+        composer.addPass(bloomPass);
+        
+        // FXAA Pass (Anti-Aliasing)
+        const effectFXAA = new THREE.ShaderPass(THREE.FXAAShader);
+        effectFXAA.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+        composer.addPass(effectFXAA);
+
+
+        // --- Dynamic Reflection Setup (Cube Camera) ---
+        renderTarget = new THREE.WebGLCubeRenderTarget( 128, {
+            format: THREE.RGBFormat,
+            generateMipmaps: true,
+            minFilter: THREE.LinearMipmapLinearFilter,
+        });
+        cubeCamera = new THREE.CubeCamera(1, 1000, renderTarget);
+        scene.add(cubeCamera);
+
+        // --- Material Definitions ---
+        // Restored High Reflection Metal Material
+        metalMaterial = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            metalness: 1.0, // Restored high metalness
+            roughness: 0.1, // Restored low roughness
+            envMap: cubeCamera.renderTarget.texture, 
+            envMapIntensity: 1.5 // Restored high envMap intensity
+        });
+
+        // Restored High Emissive (Glow) Material (White/Neutral to fix cyan patch)
+        const emissiveMaterial = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xFFFFFF).multiplyScalar(3), // Bright White glow
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending, // Restored additive blending for glow
+            depthWrite: false,
+        });
+
+        // Lighting (Restored High Intensity)
+        const blueLight = new THREE.PointLight(0x4488FF, 6, 250); // Restored high intensity
+        blueLight.position.set(-30, 15, -100);
+        scene.add(blueLight);
+
+        const cyanLight = new THREE.PointLight(0xFFFFFF, 4, 200); // Restored high intensity (White/Neutral)
+        cyanLight.position.set(30, 10, 50);
+        scene.add(cyanLight);
+
+        const ambient = new THREE.AmbientLight(0x020205, 0.7); // Restored ambient light
+        scene.add(ambient);
+
+        // --- Core Elements: Servers and Environment ---
+        createServerStructure(metalMaterial, emissiveMaterial);
+        createFloor(); 
+        createDataPackets();
+        createCentralCoreIllusion();
+
+        // Event Listeners
+        window.addEventListener('resize', onWindowResize, false);
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
+        window.addEventListener('scroll', onDocumentScroll, false); 
+    }
+
+    // Creates the constantly moving, attractive core
+    function createCentralCoreIllusion() {
+        // Dodecahedron (Restored Glowing Core - White/Neutral)
+        const coreGeometry = new THREE.DodecahedronGeometry(5, 0);
+        const coreMaterial = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xFFFFFF).multiplyScalar(20), // Bright White core
+            wireframe: true,
+            blending: THREE.AdditiveBlending, // Restored additive blending
+            transparent: true,
+            opacity: 0.8, 
+            depthWrite: false,
+        });
+
+        centralCore = new THREE.Mesh(coreGeometry, coreMaterial);
+        centralCore.position.set(0, 7.5, -50); 
+        scene.add(centralCore);
+
+        // Rotating Energy Ring (Restored Glowing Ring - White/Neutral)
+        const ringGeometry = new THREE.TorusGeometry(8, 0.2, 8, 50);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xFFFFFF).multiplyScalar(8), // Bright White ring
+            blending: THREE.AdditiveBlending, // Restored additive blending
+            depthWrite: false,
+            transparent: true,
+            opacity: 0.6
+        });
+        
+        const energyRing = new THREE.Mesh(ringGeometry, ringMaterial);
+        energyRing.rotation.x = Math.PI / 2; 
+        centralCore.add(energyRing); 
+
+        // Pulsing Light Source (Restored Bright Light)
+        const coreLight = new THREE.PointLight(0xFFFFFF, 30, 20); // Restored high intensity
+        centralCore.add(coreLight);
+    }
+
+    function onDocumentScroll() {
+        scrollY = window.scrollY;
+    }
+
+    // Creates the server racks with complex geometry and dynamic lighting
+    function createServerStructure(metalMat, emissiveMat) {
+        
+        function createRack(x, z) {
+            const geometry = new THREE.BoxGeometry(3, 15, 5);
+            const rack = new THREE.Mesh(geometry, metalMat);
+            rack.position.set(x, 7.5, z);
+            scene.add(rack);
+
+            // Volumetric light (Restored Brighter Blue)
+            const volumetricLight = new THREE.PointLight(0x00BFFF, 3, 15); // Restored high intensity
+            volumetricLight.position.set(x, 7.5, z);
+            scene.add(volumetricLight);
+            
+            for (let i = 0; i < 5; i++) {
+                // Main glowing panels (Restored Emissive glow)
+                const glowPanel = new THREE.Mesh(
+                    new THREE.PlaneGeometry(2.5, 0.5),
+                    emissiveMat
+                );
+                glowPanel.position.set(0, 1 + i * 3, 2.501); 
+                rack.add(glowPanel);
+                
+                // Tiny static indicators (Restored Red Glow)
+                const indicator = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.1, 0.1, 0.1),
+                    new THREE.MeshBasicMaterial({ 
+                        color: new THREE.Color(0xFF0000).multiplyScalar(3), // Restored red glow
+                        blending: THREE.AdditiveBlending, 
+                        depthWrite: false 
+                    })
+                );
+                indicator.position.set(-1.2, 1 + i * 3, 2.502); 
+                rack.add(indicator);
+            }
+        }
+
+        for (let i = 0; i < 15; i++) { 
+            const zPosition = -i * 15;
+            createRack(-15, zPosition);
+            createRack(15, zPosition);
+        }
+    }
+
+    // Creates the reflective water floor
+    function createFloor() {
+        const floorGeometry = new THREE.PlaneGeometry(300, 300, 120, 120); 
+        
+        // Restored High Reflection Water material
+        const waterMaterial = new THREE.MeshStandardMaterial({
+            color: 0x010101, 
+            metalness: 0.9, // Restored high metalness
+            roughness: 0.2, // Restored low roughness
+            envMap: cubeCamera.renderTarget.texture, 
+            envMapIntensity: 1.5, // Restored high envMap intensity
+            transparent: true,
+            opacity: 0.8, 
+            side: THREE.DoubleSide
+        });
+
+        floor = new THREE.Mesh(floorGeometry, waterMaterial);
+        floor.rotation.x = -Math.PI / 2; 
+        floor.position.y = -5; 
+        scene.add(floor);
+
+        const positions = floor.geometry.attributes.position.array;
+        floorOriginalZPositions = new Float32Array(floor.geometry.attributes.position.count);
+        
+        for (let i = 0; i < floor.geometry.attributes.position.count; i++) {
+            floorOriginalZPositions[i] = positions[i * 3 + 2]; 
+        }
+    }
+
+    // Creates the thousands of luminous data packets (STATIC)
+    function createDataPackets() {
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            const x = THREE.MathUtils.randFloatSpread(150);
+            const y = THREE.MathUtils.randFloat(1, 20);
+            const z = THREE.MathUtils.randFloat(-200, 100); 
+
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = z;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        // Particle color (Restored White/Neutral Glow)
+        const material = new THREE.PointsMaterial({
+            color: new THREE.Color(0xFFFFFF).multiplyScalar(2), // Restored White glow
+            size: 0.15, 
+            blending: THREE.AdditiveBlending, // Restored additive blending
+            transparent: true,
+            sizeAttenuation: true,
+            depthWrite: false,
+        });
+
+        particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+    }
+
+
+    // --- Event Handlers ---
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight); 
+        
+        composer.passes[composer.passes.length - 1].uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight); 
+    }
+
+    function onDocumentMouseMove(event) {
+        mouseX = (event.clientX - windowHalfX) * 0.0001;
+        mouseY = (event.clientY - windowHalfY) * 0.0001;
+    }
+
+    // --- Animation Loop ---
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Update Dynamic Reflections
+        cubeCamera.update(renderer, scene);
+
+        const time = clock.getElapsedTime();
+
+        // Floor Wave Deformation (Restored higher wave height)
+        if (floor && floorOriginalZPositions) {
+            const positions = floor.geometry.attributes.position.array;
+            
+            const waveSpeed = 2.5; 
+            const waveFrequency = 0.15; 
+            const waveHeight = 0.6; // Restored original wave height
+
+            for (let i = 0; i < floorOriginalZPositions.length; i++) {
+                const index = i * 3;
+                const x = positions[index];
+                const y = positions[index + 1]; 
+
+                const wave = Math.sin(x * waveFrequency + time * waveSpeed) * Math.sin(y * waveFrequency * 0.7 + time * waveSpeed * 0.8) * waveHeight;
+
+                positions[index + 2] = floorOriginalZPositions[i] + wave;
+            }
+            
+            floor.geometry.attributes.position.needsUpdate = true;
+            floor.geometry.computeVertexNormals(); 
+        }
+
+        // 1. Scroll-Based Depth Movement
+        const scrollMax = document.body.scrollHeight - window.innerHeight;
+        const scrollProgress = scrollMax > 0 ? scrollY / scrollMax : 0; 
+        
+        const START_Z = 60;
+        const END_Z = -150;
+        const newCameraZ = START_Z + (scrollProgress * (END_Z - START_Z));
+
+        camera.position.z += (newCameraZ - camera.position.z) * 0.1;
+        
+        // 2. Mouse Parallax Effect
+        camera.position.x += (mouseX * 7 - camera.position.x) * 0.07;
+        camera.position.y += (-mouseY * 7 + 5 - camera.position.y) * 0.07; 
+
+        // 3. Animate Central Core Illusion 
+        if (centralCore) {
+            centralCore.rotation.x = time * 0.1;
+            centralCore.rotation.y = time * 0.2;
+            centralCore.children[0].rotation.z = time * 0.4;
+            // Pulse the inner light (Restored bright pulse)
+            centralCore.children[1].intensity = 30 + Math.sin(time * 3) * 5; 
+        }
+
+        // 4. Render using the Composer
+        composer.render();
+    }
+
+    // Start the application after the window loads
+    window.onload = function () {
+        init();
+        animate();
+    };
+
+</script>
+</body>
+</html>
