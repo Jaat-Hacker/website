@@ -1,2 +1,2 @@
 # website
-[web.html]
+(web.html)
